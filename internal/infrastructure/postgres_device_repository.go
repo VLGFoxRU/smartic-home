@@ -7,6 +7,7 @@ import (
 
 	"github.com/VLGFoxRU/smartic-home/internal/domain"
 	"github.com/VLGFoxRU/smartic-home/internal/repository"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,11 +53,29 @@ func (r *PostgresDeviceRepository) FindAll(ctx context.Context) ([]domain.Device
 }
 
 func (r *PostgresDeviceRepository) FindByID(ctx context.Context, id string) (*domain.Device, error) {
-	// TODO: реализовать позже
-	return nil, fmt.Errorf("not implemented")
+	query := `SELECT id, name, type, status, last_seen, version FROM devices WHERE id = $1`
+	var (
+		devID    string
+		name     string
+		devType  string
+		status   domain.DeviceStatus
+		lastSeen *time.Time
+		version  int
+	)
+	err := r.pool.QueryRow(ctx, query, id).Scan(&devID, &name, &devType, &status, &lastSeen, &version)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("устройство не найдено")
+		}
+		return nil, fmt.Errorf("PostgresDeviceRepository.FindByID: %w", err)
+	}
+	device := domain.NewDevice(devID, name, devType)
+	_ = device.SetStatus(status)
+	return device, nil
 }
 
 func (r *PostgresDeviceRepository) Save(ctx context.Context, device *domain.Device) error {
 	// TODO: обновление состояния в БД
 	return fmt.Errorf("not implemented")
 }
+

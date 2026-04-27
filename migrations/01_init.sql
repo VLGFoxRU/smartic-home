@@ -41,6 +41,19 @@ CREATE TABLE device_states (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id),
+    action VARCHAR(100) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id VARCHAR(255) NOT NULL,
+    params JSONB,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    correlation_id UUID
+);
+
+CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp DESC);
+
 -- Добавим пару тестовых устройств для проверки
 
 INSERT INTO users (id, username, email, password_hash, role) VALUES

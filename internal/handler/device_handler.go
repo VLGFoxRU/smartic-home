@@ -44,3 +44,35 @@ func (h *DeviceHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
 		"data":    dtos,
 	})
 }
+
+func (h *DeviceHandler) SendCommand(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		DeviceID string                 `json:"device_id"`
+		Command  string                 `json:"command"`
+		Params   map[string]interface{} `json:"params"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.DeviceID == "" || req.Command == "" {
+		http.Error(w, `{"error":"device_id and command are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	err := h.svc.SendCommand(r.Context(), req.DeviceID, req.Command, req.Params)
+	if err != nil {
+		http.Error(w, `{"error":"command failed: `+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "accepted"})
+}

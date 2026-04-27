@@ -7,3 +7,8 @@ type DeviceDTO struct {
 	Type   string `json:"type"`
 	Status string `json:"status"`
 }
+
+type CommandRequest struct {
+    Command string                 `json:"command"`
+    Params  map[string]interface{} `json:"params"`
+}
