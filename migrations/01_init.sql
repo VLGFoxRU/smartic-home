@@ -54,6 +54,16 @@ CREATE TABLE audit_log (
 
 CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp DESC);
 
+CREATE TABLE telemetry (
+    time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    device_id UUID NOT NULL REFERENCES devices(id),
+    value DOUBLE PRECISION NOT NULL,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('temperature', 'humidity', 'power', 'energy', 'water_flow'))
+);
+
+-- SELECT create_hypertable('telemetry', 'time', if_not_exists => TRUE);
+CREATE INDEX idx_telemetry_device_time ON telemetry(device_id, time DESC);
+
 -- Добавим пару тестовых устройств для проверки
 
 INSERT INTO users (id, username, email, password_hash, role) VALUES

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -13,6 +14,19 @@ const (
 	DeviceStatusOffline  DeviceStatus = "offline"
 	DeviceStatusDisabled DeviceStatus = "disabled"
 )
+
+// CommandDescriptor описывает допустимую команду и её параметры
+type CommandDescriptor struct {
+	Name       string
+	ParamsDesc map[string]ParamConstraint
+}
+
+type ParamConstraint struct {
+	Type     string // "bool", "int", "float", "string"
+	Required bool
+	Min      *float64
+	Max      *float64
+}
 
 // Device – доменная сущность "Устройство"
 type Device struct {
@@ -94,4 +108,81 @@ func (d *Device) SetStatus(status DeviceStatus) error {
 	default:
 		return errors.New("недопустимый статус")
 	}
+}
+
+// SupportedCommands возвращает карту команд, поддерживаемых устройством
+func (d *Device) SupportedCommands() map[string]CommandDescriptor {
+	switch d.devType {
+	case "light":
+		return map[string]CommandDescriptor{
+			"set_power": {Name: "set_power", ParamsDesc: map[string]ParamConstraint{
+				"on": {Type: "bool", Required: true},
+			}},
+			"set_brightness": {Name: "set_brightness", ParamsDesc: map[string]ParamConstraint{
+				"brightness": {Type: "int", Required: true, Min: ptr(0.0), Max: ptr(100.0)},
+			}},
+		}
+	case "power_switch":
+		return map[string]CommandDescriptor{
+			"set_power": {Name: "set_power", ParamsDesc: map[string]ParamConstraint{
+				"on": {Type: "bool", Required: true},
+			}},
+		}
+	default:
+		return map[string]CommandDescriptor{}
+	}
+}
+
+func ptr(f float64) *float64 { return &f }
+
+// ValidateCommand проверяет, что команда поддерживается и параметры корректны
+func (d *Device) ValidateCommand(command string, params map[string]interface{}) error {
+	cmds := d.SupportedCommands()
+	desc, ok := cmds[command]
+	if !ok {
+		return fmt.Errorf("команда '%s' не поддерживается устройством типа %s", command, d.devType)
+	}
+
+	for paramName, constraint := range desc.ParamsDesc {
+		val, exists := params[paramName]
+		if constraint.Required && !exists {
+			return fmt.Errorf("обязательный параметр '%s' отсутствует", paramName)
+		}
+		if !exists {
+			continue
+		}
+		switch constraint.Type {
+		case "bool":
+			if _, ok := val.(bool); !ok {
+				return fmt.Errorf("параметр '%s' должен быть boolean", paramName)
+			}
+		case "int":
+			// JSON числа могут быть float64, но проверим целочисленность
+			v, ok := val.(float64)
+			if !ok {
+				return fmt.Errorf("параметр '%s' должен быть числом", paramName)
+			}
+			if v != float64(int(v)) {
+				return fmt.Errorf("параметр '%s' должен быть целым числом", paramName)
+			}
+			if constraint.Min != nil && v < *constraint.Min {
+				return fmt.Errorf("параметр '%s' меньше минимума (%.0f)", paramName, *constraint.Min)
+			}
+			if constraint.Max != nil && v > *constraint.Max {
+				return fmt.Errorf("параметр '%s' превышает максимум (%.0f)", paramName, *constraint.Max)
+			}
+		case "float":
+			v, ok := val.(float64)
+			if !ok {
+				return fmt.Errorf("параметр '%s' должен быть числом", paramName)
+			}
+			if constraint.Min != nil && v < *constraint.Min {
+				return fmt.Errorf("параметр '%s' меньше минимума (%f)", paramName, *constraint.Min)
+			}
+			if constraint.Max != nil && v > *constraint.Max {
+				return fmt.Errorf("параметр '%s' превышает максимум (%f)", paramName, *constraint.Max)
+			}
+		}
+	}
+	return nil
 }
