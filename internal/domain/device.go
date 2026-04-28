@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// DeviceStatus – перечисление статусов (как в спецификации)
 type DeviceStatus string
 
 const (
@@ -15,7 +14,107 @@ const (
 	DeviceStatusDisabled DeviceStatus = "disabled"
 )
 
-// CommandDescriptor описывает допустимую команду и её параметры
+type Device struct {
+	id       string
+	name     string
+	roomID   string
+	devType  string
+	status   DeviceStatus
+	lastSeen *time.Time
+	version  int
+}
+
+func NewDevice(id, name, devType string) *Device {
+	return &Device{
+		id:      id,
+		name:    name,
+		devType: devType,
+		status:  DeviceStatusOffline,
+		version: 1,
+	}
+}
+
+func NewDeviceWithRoom(id, name, devType, roomID string) *Device {
+	return &Device{
+		id:      id,
+		name:    name,
+		roomID:  roomID,
+		devType: devType,
+		status:  DeviceStatusOffline,
+		version: 1,
+	}
+}
+
+// Геттеры
+func (d *Device) ID() string            { return d.id }
+func (d *Device) Name() string          { return d.name }
+func (d *Device) Type() string          { return d.devType }
+func (d *Device) Status() DeviceStatus  { return d.status }
+func (d *Device) RoomID() string        { return d.roomID }
+func (d *Device) LastSeen() *time.Time  { return d.lastSeen }
+func (d *Device) Version() int          { return d.version }
+
+// Сеттеры для полей, безопасных к изменению
+func (d *Device) SetName(name string)    { d.name = name }
+func (d *Device) SetType(t string)       { d.devType = t }
+func (d *Device) SetRoomID(rid string)   { d.roomID = rid }
+func (d *Device) SetLastSeen(t time.Time) { d.lastSeen = &t }
+func (d *Device) SetVersion(v int)       { d.version = v }
+
+// Восстановление статуса (используется репозиторием)
+func (d *Device) SetStatus(status DeviceStatus) error {
+	switch status {
+	case DeviceStatusOnline, DeviceStatusOffline, DeviceStatusDisabled:
+		d.status = status
+		return nil
+	default:
+		return errors.New("недопустимый статус")
+	}
+}
+
+// Включение устройства
+func (d *Device) Enable() error {
+	if d.status != DeviceStatusDisabled {
+		return errors.New("устройство не отключено, включение невозможно")
+	}
+	d.status = DeviceStatusOnline
+	return nil
+}
+
+// Отключение устройства
+func (d *Device) Disable() error {
+	if d.status == DeviceStatusDisabled {
+		return errors.New("устройство уже отключено")
+	}
+	d.status = DeviceStatusDisabled
+	return nil
+}
+
+// Пометить как онлайн (heartbeat)
+func (d *Device) MarkOnline(timestamp time.Time) error {
+	if d.status == DeviceStatusDisabled {
+		return errors.New("нельзя перевести disabled устройство в online")
+	}
+	d.status = DeviceStatusOnline
+	d.lastSeen = &timestamp
+	return nil
+}
+
+// Пометить как офлайн
+func (d *Device) MarkOffline() error {
+	if d.status == DeviceStatusDisabled {
+		return errors.New("устройство disabled, игнорируем offine")
+	}
+	d.status = DeviceStatusOffline
+	return nil
+}
+
+// Может ли принять команду
+func (d *Device) CanAcceptCommand() bool {
+	return d.status == DeviceStatusOnline
+}
+
+// Валидация команды и параметров
 type CommandDescriptor struct {
 	Name       string
 	ParamsDesc map[string]ParamConstraint
@@ -28,89 +127,6 @@ type ParamConstraint struct {
 	Max      *float64
 }
 
-// Device – доменная сущность "Устройство"
-type Device struct {
-	id      string       // внутренний идентификатор (UUID)
-	name    string
-	devType string       // тип устройства (light, temperature_sensor ...)
-	status  DeviceStatus
-	lastSeen *time.Time  // nullable время последней телеметрии
-	version int          // оптимистичная блокировка
-}
-
-// NewDevice – конструктор, создаёт устройство с начальным состоянием
-func NewDevice(id, name, devType string) *Device {
-	return &Device{
-		id:      id,
-		name:    name,
-		devType: devType,
-		status:  DeviceStatusOffline, // по умолчанию офлайн
-		version: 1,
-	}
-}
-
-// ID, Name, Type, Status – геттеры (доступ на чтение)
-func (d *Device) ID() string          { return d.id }
-func (d *Device) Name() string        { return d.name }
-func (d *Device) Type() string        { return d.devType }
-func (d *Device) Status() DeviceStatus { return d.status }
-func (d *Device) Version() int        { return d.version }
-
-// Enable – включает устройство, если оно было disabled
-func (d *Device) Enable() error {
-	if d.status != DeviceStatusDisabled {
-		return errors.New("устройство не отключено, включение невозможно")
-	}
-	d.status = DeviceStatusOnline
-	return nil
-}
-
-// Disable – выключает устройство (перевод в disabled)
-func (d *Device) Disable() error {
-	if d.status == DeviceStatusDisabled {
-		return errors.New("устройство уже отключено")
-	}
-	d.status = DeviceStatusDisabled
-	return nil
-}
-
-// MarkOnline – вызывается при получении heartbeat, переводит в online
-func (d *Device) MarkOnline(timestamp time.Time) error {
-	if d.status == DeviceStatusDisabled {
-		return errors.New("нельзя перевести disabled устройство в online")
-	}
-	d.status = DeviceStatusOnline
-	d.lastSeen = &timestamp
-	return nil
-}
-
-// MarkOffline – переводит в offline (при таймауте)
-func (d *Device) MarkOffline() error {
-	if d.status == DeviceStatusDisabled {
-		return errors.New("устройство disabled, игнорируем offine")
-	}
-	d.status = DeviceStatusOffline
-	return nil
-}
-
-// CanAcceptCommand – проверяет, можно ли отправить команду (инвариант из документации)
-func (d *Device) CanAcceptCommand() bool {
-	return d.status == DeviceStatusOnline
-}
-
-// SetStatus – для восстановления из БД (ТОЛЬКО для репозитория)
-// В реальном проекте можно сделать экспортируемым методом Reconstruct.
-func (d *Device) SetStatus(status DeviceStatus) error {
-	switch status {
-	case DeviceStatusOnline, DeviceStatusOffline, DeviceStatusDisabled:
-		d.status = status
-		return nil
-	default:
-		return errors.New("недопустимый статус")
-	}
-}
-
-// SupportedCommands возвращает карту команд, поддерживаемых устройством
 func (d *Device) SupportedCommands() map[string]CommandDescriptor {
 	switch d.devType {
 	case "light":
@@ -133,9 +149,6 @@ func (d *Device) SupportedCommands() map[string]CommandDescriptor {
 	}
 }
 
-func ptr(f float64) *float64 { return &f }
-
-// ValidateCommand проверяет, что команда поддерживается и параметры корректны
 func (d *Device) ValidateCommand(command string, params map[string]interface{}) error {
 	cmds := d.SupportedCommands()
 	desc, ok := cmds[command]
@@ -157,7 +170,6 @@ func (d *Device) ValidateCommand(command string, params map[string]interface{}) 
 				return fmt.Errorf("параметр '%s' должен быть boolean", paramName)
 			}
 		case "int":
-			// JSON числа могут быть float64, но проверим целочисленность
 			v, ok := val.(float64)
 			if !ok {
 				return fmt.Errorf("параметр '%s' должен быть числом", paramName)
@@ -186,3 +198,5 @@ func (d *Device) ValidateCommand(command string, params map[string]interface{}) 
 	}
 	return nil
 }
+
+func ptr(f float64) *float64 { return &f }

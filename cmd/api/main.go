@@ -65,8 +65,15 @@ func main() {
 
 	// Защищённые маршруты (требуют JWT)
 	api := r.PathPrefix("/api/v1").Subrouter()
+	api.Use(middleware.AuthMiddleware(jwtSecret))
+
 	api.HandleFunc("/devices", deviceHandler.ListDevices).Methods("GET")
+	api.HandleFunc("/devices", deviceHandler.CreateDevice).Methods("POST")
+	api.HandleFunc("/devices/{id}", deviceHandler.GetDevice).Methods("GET")
+	api.HandleFunc("/devices/{id}", deviceHandler.UpdateDevice).Methods("PUT")
+	api.HandleFunc("/devices/{id}", deviceHandler.DeleteDevice).Methods("DELETE")
 	api.HandleFunc("/devices/{id}/command", deviceHandler.SendCommand).Methods("POST")
+	api.HandleFunc("/devices/{id}/status", deviceHandler.UpdateStatus).Methods("PATCH")
 
 	// Применяем логгирование ко всем маршрутам
 	wrappedR := middleware.CORSMiddleware(middleware.LoggingMiddleware(r))
