@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/VLGFoxRU/smartic-home/internal/domain"
 	"github.com/VLGFoxRU/smartic-home/internal/repository"
@@ -31,12 +32,15 @@ func (s *DeviceService) GetDevice(ctx context.Context, id string) (*domain.Devic
 }
 
 func (s *DeviceService) CreateDevice(ctx context.Context, name, devType, roomID string) (*domain.Device, error) {
-	id := uuid.New().String()
-	device := domain.NewDeviceWithRoom(id, name, devType, roomID)
-	if err := s.repo.Create(ctx, device); err != nil {
-		return nil, fmt.Errorf("ошибка создания устройства: %w", err)
-	}
-	return device, nil
+    id := uuid.New().String()
+    device := domain.NewDeviceWithRoom(id, name, devType, roomID)
+    // Имитируем мгновенный heartbeat, чтобы устройство было online
+    device.MarkOnline(time.Now())
+    
+    if err := s.repo.Create(ctx, device); err != nil {
+        return nil, fmt.Errorf("ошибка создания устройства: %w", err)
+    }
+    return device, nil
 }
 
 func (s *DeviceService) UpdateDevice(ctx context.Context, id, name, devType string) error {

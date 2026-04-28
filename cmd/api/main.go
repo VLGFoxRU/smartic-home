@@ -48,6 +48,9 @@ func main() {
 	deviceSvc := service.NewDeviceService(deviceRepo, cacheRepo)
 	controlSvc := service.NewControlService(deviceRepo, cacheRepo, auditRepo, stubBroker, wsEventPub)
 	deviceHandler := handler.NewDeviceHandler(deviceSvc, controlSvc)
+	telemetryRepo := infrastructure.NewPostgresTelemetryRepository(pool)
+	telemetrySvc := service.NewTelemetryService(telemetryRepo)
+	telemetryHandler := handler.NewTelemetryHandler(telemetrySvc)
 
 	// Секрет для JWT (в реальности из переменной окружения)
 	jwtSecret := []byte(getEnv("JWT_SECRET", "super-secret-key"))
@@ -74,6 +77,8 @@ func main() {
 	api.HandleFunc("/devices/{id}", deviceHandler.DeleteDevice).Methods("DELETE")
 	api.HandleFunc("/devices/{id}/command", deviceHandler.SendCommand).Methods("POST")
 	api.HandleFunc("/devices/{id}/status", deviceHandler.UpdateStatus).Methods("PATCH")
+	api.HandleFunc("/telemetry/{id}", telemetryHandler.IngestTelemetry).Methods("POST")
+	api.HandleFunc("/telemetry/{id}", telemetryHandler.GetTelemetryHistory).Methods("GET")
 
 	// Применяем логгирование ко всем маршрутам
 	wrappedR := middleware.CORSMiddleware(middleware.LoggingMiddleware(r))
