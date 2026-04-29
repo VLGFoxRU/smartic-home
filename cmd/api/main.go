@@ -51,6 +51,9 @@ func main() {
 	telemetryRepo := infrastructure.NewPostgresTelemetryRepository(pool)
 	telemetrySvc := service.NewTelemetryService(telemetryRepo)
 	telemetryHandler := handler.NewTelemetryHandler(telemetrySvc)
+	sceneRepo := infrastructure.NewPostgresSceneRepository(pool)
+	sceneSvc := service.NewSceneService(sceneRepo)
+	sceneHandler := handler.NewSceneHandler(sceneSvc)
 
 	// Секрет для JWT (в реальности из переменной окружения)
 	jwtSecret := []byte(getEnv("JWT_SECRET", "super-secret-key"))
@@ -79,6 +82,13 @@ func main() {
 	api.HandleFunc("/devices/{id}/status", deviceHandler.UpdateStatus).Methods("PATCH")
 	api.HandleFunc("/telemetry/{id}", telemetryHandler.IngestTelemetry).Methods("POST")
 	api.HandleFunc("/telemetry/{id}", telemetryHandler.GetTelemetryHistory).Methods("GET")
+	api.HandleFunc("/scenes", sceneHandler.ListScenes).Methods("GET")
+	api.HandleFunc("/scenes", sceneHandler.CreateScene).Methods("POST")
+	api.HandleFunc("/scenes/{id}", sceneHandler.GetScene).Methods("GET")
+	api.HandleFunc("/scenes/{id}", sceneHandler.UpdateScene).Methods("PUT")
+	api.HandleFunc("/scenes/{id}", sceneHandler.DeleteScene).Methods("DELETE")
+	api.HandleFunc("/scenes/{id}/activate", sceneHandler.ActivateScene).Methods("PATCH")
+	api.HandleFunc("/scenes/{id}/pause", sceneHandler.PauseScene).Methods("PATCH")
 
 	// Применяем логгирование ко всем маршрутам
 	wrappedR := middleware.CORSMiddleware(middleware.LoggingMiddleware(r))

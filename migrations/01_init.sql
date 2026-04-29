@@ -64,6 +64,18 @@ CREATE TABLE telemetry (
 -- SELECT create_hypertable('telemetry', 'time', if_not_exists => TRUE);
 CREATE INDEX idx_telemetry_device_time ON telemetry(device_id, time DESC);
 
+CREATE TABLE scenes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    home_id UUID NOT NULL REFERENCES homes(id),
+    name VARCHAR(255) NOT NULL,
+    condition_json JSONB NOT NULL DEFAULT '{}',
+    action_json JSONB NOT NULL DEFAULT '{}',
+    is_active BOOLEAN NOT NULL DEFAULT false,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    version INTEGER NOT NULL DEFAULT 1
+);
+
 -- Добавим пару тестовых устройств для проверки
 
 INSERT INTO users (id, username, email, password_hash, role) VALUES
