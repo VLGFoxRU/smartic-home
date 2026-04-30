@@ -11,6 +11,7 @@ import (
 	"github.com/VLGFoxRU/smartic-home/internal/middleware"
 	"github.com/VLGFoxRU/smartic-home/internal/service"
 	"github.com/VLGFoxRU/smartic-home/internal/ws"
+	"github.com/VLGFoxRU/smartic-home/internal/engine"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -48,12 +49,19 @@ func main() {
 	deviceSvc := service.NewDeviceService(deviceRepo, cacheRepo)
 	controlSvc := service.NewControlService(deviceRepo, cacheRepo, auditRepo, stubBroker, wsEventPub)
 	deviceHandler := handler.NewDeviceHandler(deviceSvc, controlSvc)
-	telemetryRepo := infrastructure.NewPostgresTelemetryRepository(pool)
-	telemetrySvc := service.NewTelemetryService(telemetryRepo)
-	telemetryHandler := handler.NewTelemetryHandler(telemetrySvc)
+	
 	sceneRepo := infrastructure.NewPostgresSceneRepository(pool)
 	sceneSvc := service.NewSceneService(sceneRepo)
 	sceneHandler := handler.NewSceneHandler(sceneSvc)
+
+	// SceneEngine
+	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc)
+
+	// TelemetryService
+	telemetryRepo := infrastructure.NewPostgresTelemetryRepository(pool)
+	telemetrySvc := service.NewTelemetryService(telemetryRepo, sceneEngine) // передаём движок
+	telemetryHandler := handler.NewTelemetryHandler(telemetrySvc)
+
 	anomalyRepo := infrastructure.NewPostgresAnomalyRepository(pool)
 	anomalySvc := service.NewAnomalyService(anomalyRepo)
 	anomalyHandler := handler.NewAnomalyHandler(anomalySvc)

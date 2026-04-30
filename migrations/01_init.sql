@@ -99,6 +99,9 @@ CREATE INDEX idx_anomalies_device_id ON anomalies(device_id);
 INSERT INTO users (id, username, email, password_hash, role) VALUES
 ('a0000000-0000-0000-0000-000000000001', 'testuser', 'test@example.com', 'hashed_password', 'owner');
 
+INSERT INTO users (id, username, email, password_hash, role) VALUES
+('00000000-0000-0000-0000-000000000000', 'system', 'system@internal', 'nologin', 'admin');
+
 INSERT INTO homes (id, name, owner_id) VALUES
 ('b0000000-0000-0000-0000-000000000001', 'Мой дом', 'a0000000-0000-0000-0000-000000000001');
 
