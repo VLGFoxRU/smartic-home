@@ -54,6 +54,9 @@ func main() {
 	sceneRepo := infrastructure.NewPostgresSceneRepository(pool)
 	sceneSvc := service.NewSceneService(sceneRepo)
 	sceneHandler := handler.NewSceneHandler(sceneSvc)
+	anomalyRepo := infrastructure.NewPostgresAnomalyRepository(pool)
+	anomalySvc := service.NewAnomalyService(anomalyRepo)
+	anomalyHandler := handler.NewAnomalyHandler(anomalySvc)
 
 	// Секрет для JWT (в реальности из переменной окружения)
 	jwtSecret := []byte(getEnv("JWT_SECRET", "super-secret-key"))
@@ -89,6 +92,9 @@ func main() {
 	api.HandleFunc("/scenes/{id}", sceneHandler.DeleteScene).Methods("DELETE")
 	api.HandleFunc("/scenes/{id}/activate", sceneHandler.ActivateScene).Methods("PATCH")
 	api.HandleFunc("/scenes/{id}/pause", sceneHandler.PauseScene).Methods("PATCH")
+	api.HandleFunc("/anomalies", anomalyHandler.ListAnomalies).Methods("GET")
+	api.HandleFunc("/anomalies", anomalyHandler.CreateAnomaly).Methods("POST")
+	api.HandleFunc("/anomalies/{id}", anomalyHandler.UpdateAnomalyStatus).Methods("PATCH")
 
 	// Применяем логгирование ко всем маршрутам
 	wrappedR := middleware.CORSMiddleware(middleware.LoggingMiddleware(r))

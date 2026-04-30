@@ -76,6 +76,24 @@ CREATE TABLE scenes (
     version INTEGER NOT NULL DEFAULT 1
 );
 
+CREATE TABLE anomalies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    device_id UUID NOT NULL REFERENCES devices(id),
+    detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    value DOUBLE PRECISION NOT NULL,
+    expected_value DOUBLE PRECISION,
+    severity VARCHAR(20) NOT NULL CHECK (severity IN ('warning', 'critical')),
+    status VARCHAR(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'acknowledged', 'resolved', 'false_positive')),
+    acknowledged_by UUID REFERENCES users(id),
+    acknowledged_at TIMESTAMPTZ,
+    resolved_by UUID REFERENCES users(id),
+    resolved_at TIMESTAMPTZ,
+    version INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX idx_anomalies_status ON anomalies(status);
+CREATE INDEX idx_anomalies_device_id ON anomalies(device_id);
+
 -- Добавим пару тестовых устройств для проверки
 
 INSERT INTO users (id, username, email, password_hash, role) VALUES
