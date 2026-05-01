@@ -3,31 +3,33 @@ package engine
 import (
     "context"
     "log"
-	"time"
+    "time"
 
+    "github.com/VLGFoxRU/smartic-home/internal/repository"
     "github.com/VLGFoxRU/smartic-home/internal/service"
 )
 
 type SceneEngine struct {
     sceneService   *service.SceneService
     controlService *service.ControlService
+    cache          repository.CacheRepository
 }
 
-func NewSceneEngine(sceneService *service.SceneService, controlService *service.ControlService) *SceneEngine {
+func NewSceneEngine(
+    sceneService *service.SceneService,
+    controlService *service.ControlService,
+    cache repository.CacheRepository,
+) *SceneEngine {
     return &SceneEngine{
         sceneService:   sceneService,
         controlService: controlService,
+        cache:          cache,
     }
 }
 
-// ProcessTelemetry вызывается при каждом новом показании
 func (e *SceneEngine) ProcessTelemetry(ctx context.Context, deviceID, telemetryType string, value float64, timestamp time.Time) {
-    // Пока упрощённо: обрабатываем только temperature, ищем сценарии для всех домов.
-    // В реальности нужно определить дом по deviceID, но у нас пока нет метода GetHomeByDevice.
-    // Используем фиксированный дом (b0000000-...)
-    homeID := "b0000000-0000-0000-0000-000000000001"
+    homeID := "b0000000-0000-0000-0000-000000000001" // фиксированный дом
 
-    // Получаем все активные сценарии для дома
     scenes, err := e.sceneService.ListScenes(ctx, homeID)
     if err != nil {
         log.Printf("SceneEngine: ошибка получения сценариев: %v", err)
@@ -38,21 +40,33 @@ func (e *SceneEngine) ProcessTelemetry(ctx context.Context, deviceID, telemetryT
         if !scene.IsActive() {
             continue
         }
-        // Проверяем условие
         if e.checkCondition(scene.Condition(), deviceID, telemetryType, value) {
-            // Выполняем действие
+            // Проверяем cooldown
+            cooldownSec := 300 // по умолчанию 5 минут
+            if cd, ok := scene.Condition()["cooldown_sec"].(float64); ok {
+                cooldownSec = int(cd)
+            }
+            cooldownKey := "scene:" + scene.ID() + ":last_triggered"
+            acquired, err := e.cache.SetNX(ctx, cooldownKey, "1", time.Duration(cooldownSec)*time.Second)
+            if err != nil {
+                log.Printf("SceneEngine: ошибка проверки cooldown: %v", err)
+                continue
+            }
+            if !acquired {
+                log.Printf("SceneEngine: сценарий %s пропущен (cooldown)", scene.ID())
+                continue
+            }
+
             action := scene.Action()
             cmd, _ := action["command"].(string)
             params, _ := action["params"].(map[string]interface{})
             targetDeviceID, _ := action["device_id"].(string)
-
             if cmd == "" || targetDeviceID == "" {
                 log.Printf("SceneEngine: некорректное действие в сценарии %s", scene.ID())
                 continue
             }
 
-            // Вызываем ControlService (роль system, userID – системный)
-            err := e.controlService.SendCommand(ctx, targetDeviceID, cmd, params, "0000000-0000-0000-0000-000000000000", "admin")
+            err = e.controlService.SendCommand(ctx, targetDeviceID, cmd, params, "c0000000-0000-0000-0000-000000000001", "admin")
             if err != nil {
                 log.Printf("SceneEngine: ошибка выполнения команды сценария %s: %v", scene.ID(), err)
             } else {

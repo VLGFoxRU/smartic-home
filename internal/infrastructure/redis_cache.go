@@ -32,3 +32,12 @@ func (r *RedisCacheRepository) Set(ctx context.Context, key string, value string
 func (r *RedisCacheRepository) Del(ctx context.Context, key string) error {
     return r.client.Del(ctx, key).Err()
 }
+
+// SetNX пытается установить ключ, если его ещё нет. Возвращает true, если установка успешна.
+func (r *RedisCacheRepository) SetNX(ctx context.Context, key string, value string, ttl time.Duration) (bool, error) {
+    result, err := r.client.SetNX(ctx, key, value, ttl).Result()
+    if err != nil {
+        return false, fmt.Errorf("RedisCacheRepository.SetNX: %w", err)
+    }
+    return result, nil
+}

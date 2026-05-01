@@ -55,7 +55,7 @@ func main() {
 	sceneHandler := handler.NewSceneHandler(sceneSvc)
 
 	// SceneEngine
-	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc)
+	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc, cacheRepo)
 
 	// TelemetryService
 	telemetryRepo := infrastructure.NewPostgresTelemetryRepository(pool)
