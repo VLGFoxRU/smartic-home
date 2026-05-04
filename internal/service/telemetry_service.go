@@ -13,12 +13,12 @@ type TelemetryProcessor interface {
 }
 
 type TelemetryService struct {
-    repo      repository.TelemetryRepository
-    processor TelemetryProcessor
+    repo       repository.TelemetryRepository
+    processors []TelemetryProcessor
 }
 
-func NewTelemetryService(repo repository.TelemetryRepository, processor TelemetryProcessor) *TelemetryService {
-    return &TelemetryService{repo: repo, processor: processor}
+func NewTelemetryService(repo repository.TelemetryRepository, processors ...TelemetryProcessor) *TelemetryService {
+    return &TelemetryService{repo: repo, processors: processors}
 }
 
 func (s *TelemetryService) Ingest(ctx context.Context, deviceID, telemetryType string, value float64, timestamp time.Time) error {
@@ -34,8 +34,8 @@ func (s *TelemetryService) Ingest(ctx context.Context, deviceID, telemetryType s
     if err := s.repo.Save(ctx, rec); err != nil {
         return err
     }
-    if s.processor != nil {
-        s.processor.ProcessTelemetry(ctx, deviceID, telemetryType, value, timestamp)
+    for _, p := range s.processors {
+        p.ProcessTelemetry(ctx, deviceID, telemetryType, value, timestamp)
     }
     return nil
 }

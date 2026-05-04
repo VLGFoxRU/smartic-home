@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"database/sql"
 
 	"github.com/VLGFoxRU/smartic-home/internal/repository"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -46,4 +47,24 @@ func (r *PostgresTelemetryRepository) GetHistory(ctx context.Context, deviceID s
 		records = append(records, rec)
 	}
 	return records, rows.Err()
+}
+
+func (r *PostgresTelemetryRepository) GetStats(ctx context.Context, deviceID, telemetryType string, days int) (*repository.StatsResult, error) {
+    query := `SELECT COUNT(*), AVG(value), STDDEV_SAMP(value)
+              FROM telemetry
+              WHERE device_id = $1 AND type = $2 AND time >= NOW() - ($3 || ' days')::INTERVAL`
+    var count int
+    var mean, stddev sql.NullFloat64
+    err := r.pool.QueryRow(ctx, query, deviceID, telemetryType, fmt.Sprintf("%d", days)).Scan(&count, &mean, &stddev)
+    if err != nil {
+        return nil, fmt.Errorf("PostgresTelemetryRepository.GetStats: %w", err)
+    }
+    result := &repository.StatsResult{Count: count}
+    if mean.Valid {
+        result.Mean = mean.Float64
+    }
+    if stddev.Valid {
+        result.StdDev = stddev.Float64
+    }
+    return result, nil
 }
