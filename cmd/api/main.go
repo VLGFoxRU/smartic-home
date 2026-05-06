@@ -56,16 +56,16 @@ func main() {
 
 	// Сервисы
 	deviceSvc := service.NewDeviceService(deviceRepo, cacheRepo)
-	controlSvc := service.NewControlService(deviceRepo, cacheRepo, auditRepo, stubBroker, wsEventPub)
-	sceneSvc := service.NewSceneService(sceneRepo)
-	anomalySvc := service.NewAnomalyService(anomalyRepo)
+    controlSvc := service.NewControlService(deviceRepo, cacheRepo, auditRepo, stubBroker, wsEventPub)
+    sceneSvc := service.NewSceneService(sceneRepo)
+    anomalySvc := service.NewAnomalyService(anomalyRepo, wsEventPub) // получает publisher
 
 	// Движки и детекторы
-	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc, cacheRepo)
-	anomalyDetector := detector.NewAnomalyDetector(telemetryRepo, anomalySvc, wsEventPub)
+	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc, cacheRepo, wsEventPub)
+	anomalyDetector := detector.NewAnomalyDetector(telemetryRepo, anomalySvc)
 
 	// TelemetryService (с процессорами)
-	telemetrySvc := service.NewTelemetryService(telemetryRepo, anomalyDetector, sceneEngine)
+	telemetrySvc := service.NewTelemetryService(telemetryRepo, wsEventPub, anomalyDetector, sceneEngine)
 
 	// Обработчики
 	authSecret := []byte(getEnv("JWT_SECRET", "super-secret-key"))

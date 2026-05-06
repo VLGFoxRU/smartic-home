@@ -13,17 +13,20 @@ type SceneEngine struct {
     sceneService   *service.SceneService
     controlService *service.ControlService
     cache          repository.CacheRepository
+    eventPub       repository.EventPublisher
 }
 
 func NewSceneEngine(
     sceneService *service.SceneService,
     controlService *service.ControlService,
     cache repository.CacheRepository,
+    eventPub repository.EventPublisher,
 ) *SceneEngine {
     return &SceneEngine{
         sceneService:   sceneService,
         controlService: controlService,
         cache:          cache,
+        eventPub:       eventPub,
     }
 }
 
@@ -71,12 +74,23 @@ func (e *SceneEngine) ProcessTelemetry(ctx context.Context, deviceID, telemetryT
                 log.Printf("SceneEngine: ошибка выполнения команды сценария %s: %v", scene.ID(), err)
             } else {
                 log.Printf("SceneEngine: сценарий %s выполнен (команда %s -> %s)", scene.ID(), cmd, targetDeviceID)
+                // Публикуем событие
+                if e.eventPub != nil {
+                    _ = e.eventPub.Publish(ctx, "scene.executed", map[string]interface{}{
+                        "scene_id":   scene.ID(),
+                        "scene_name": scene.Name(),
+                        "device_id":  targetDeviceID,
+                        "command":    cmd,
+                        "params":     params,
+                        "timestamp":  time.Now(),
+                    })
+                }
             }
         }
     }
 }
 
-// checkCondition простая проверка "type = temperature, operator = '>', value"
+// checkCondition без изменений
 func (e *SceneEngine) checkCondition(condition map[string]interface{}, deviceID, telemetryType string, value float64) bool {
     condType, _ := condition["type"].(string)
     if condType != telemetryType {

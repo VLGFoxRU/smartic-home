@@ -15,10 +15,19 @@ type TelemetryProcessor interface {
 type TelemetryService struct {
     repo       repository.TelemetryRepository
     processors []TelemetryProcessor
+    eventPub   repository.EventPublisher
 }
 
-func NewTelemetryService(repo repository.TelemetryRepository, processors ...TelemetryProcessor) *TelemetryService {
-    return &TelemetryService{repo: repo, processors: processors}
+func NewTelemetryService(
+    repo repository.TelemetryRepository,
+    eventPub repository.EventPublisher,
+    processors ...TelemetryProcessor,
+) *TelemetryService {
+    return &TelemetryService{
+        repo:       repo,
+        eventPub:   eventPub,
+        processors: processors,
+    }
 }
 
 func (s *TelemetryService) Ingest(ctx context.Context, deviceID, telemetryType string, value float64, timestamp time.Time) error {
@@ -34,6 +43,16 @@ func (s *TelemetryService) Ingest(ctx context.Context, deviceID, telemetryType s
     if err := s.repo.Save(ctx, rec); err != nil {
         return err
     }
+    // Публикуем событие
+    if s.eventPub != nil {
+        _ = s.eventPub.Publish(ctx, "telemetry.ingested", map[string]interface{}{
+            "device_id": deviceID,
+            "type":      telemetryType,
+            "value":     value,
+            "timestamp": timestamp,
+        })
+    }
+    // Запускаем процессоры
     for _, p := range s.processors {
         p.ProcessTelemetry(ctx, deviceID, telemetryType, value, timestamp)
     }

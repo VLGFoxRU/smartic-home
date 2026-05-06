@@ -1,38 +1,50 @@
 package service
 
 import (
-	"context"
-	"fmt"
+    "context"
+    "fmt"
 
-	"github.com/VLGFoxRU/smartic-home/internal/domain"
-	"github.com/VLGFoxRU/smartic-home/internal/repository"
-	"github.com/google/uuid"
+    "github.com/VLGFoxRU/smartic-home/internal/domain"
+    "github.com/VLGFoxRU/smartic-home/internal/repository"
+    "github.com/google/uuid"
 )
 
 type AnomalyService struct {
-	repo repository.AnomalyRepository
+    repo     repository.AnomalyRepository
+    eventPub repository.EventPublisher
 }
 
-func NewAnomalyService(repo repository.AnomalyRepository) *AnomalyService {
-	return &AnomalyService{repo: repo}
+func NewAnomalyService(repo repository.AnomalyRepository, eventPub repository.EventPublisher) *AnomalyService {
+    return &AnomalyService{repo: repo, eventPub: eventPub}
 }
 
-// CreateAnomaly создаёт новую аномалию вручную (для тестов)
 func (s *AnomalyService) CreateAnomaly(ctx context.Context, deviceID string, value float64, expectedValue *float64, severity string) (*domain.Anomaly, error) {
-	id := uuid.New().String()
-	anomaly := domain.NewAnomaly(id, deviceID, value, expectedValue, severity)
-	if err := s.repo.Create(ctx, anomaly); err != nil {
-		return nil, fmt.Errorf("не удалось создать аномалию: %w", err)
-	}
-	return anomaly, nil
+    id := uuid.New().String()
+    anomaly := domain.NewAnomaly(id, deviceID, value, expectedValue, severity)
+    if err := s.repo.Create(ctx, anomaly); err != nil {
+        return nil, fmt.Errorf("не удалось создать аномалию: %w", err)
+    }
+    // Публикуем событие
+    if s.eventPub != nil {
+        _ = s.eventPub.Publish(ctx, "anomaly.detected", map[string]interface{}{
+            "id":          anomaly.ID(),
+            "device_id":   deviceID,
+            "value":       value,
+            "expected":    expectedValue,
+            "severity":    severity,
+            "timestamp":   anomaly.DetectedAt(),
+        })
+    }
+    return anomaly, nil
 }
 
+// остальные методы (GetAnomaly, ListAnomalies, UpdateStatus) без изменений
 func (s *AnomalyService) GetAnomaly(ctx context.Context, id string) (*domain.Anomaly, error) {
-	return s.repo.FindByID(ctx, id)
+    return s.repo.FindByID(ctx, id)
 }
 
 func (s *AnomalyService) ListAnomalies(ctx context.Context, deviceID, statusFilter string) ([]domain.Anomaly, error) {
-	return s.repo.FindByDevice(ctx, deviceID, statusFilter)
+    return s.repo.FindByDevice(ctx, deviceID, statusFilter)
 }
 
 func (s *AnomalyService) UpdateStatus(ctx context.Context, id, newStatus, userID string) error {
