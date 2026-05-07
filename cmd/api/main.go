@@ -45,6 +45,8 @@ func main() {
 	telemetryRepo := infrastructure.NewPostgresTelemetryRepository(pool)
 	sceneRepo := infrastructure.NewPostgresSceneRepository(pool)
 	anomalyRepo := infrastructure.NewPostgresAnomalyRepository(pool)
+	homeRepo := infrastructure.NewPostgresHomeRepository(pool)
+	roomRepo := infrastructure.NewPostgresRoomRepository(pool)
 
 	// Инфраструктурные адаптеры
 	stubBroker := infrastructure.NewStubBroker() // замена на RabbitMQ позже
@@ -59,6 +61,8 @@ func main() {
     controlSvc := service.NewControlService(deviceRepo, cacheRepo, auditRepo, stubBroker, wsEventPub)
     sceneSvc := service.NewSceneService(sceneRepo)
     anomalySvc := service.NewAnomalyService(anomalyRepo, wsEventPub) // получает publisher
+	homeSvc := service.NewHomeService(homeRepo)
+	roomSvc := service.NewRoomService(roomRepo)
 
 	// Движки и детекторы
 	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc, cacheRepo, wsEventPub)
@@ -75,6 +79,8 @@ func main() {
 	sceneHandler := handler.NewSceneHandler(sceneSvc)
 	anomalyHandler := handler.NewAnomalyHandler(anomalySvc)
 	wsHandler := handler.NewWSHandler(hub, authSecret)
+	homeHandler := handler.NewHomeHandler(homeSvc)
+	roomHandler := handler.NewRoomHandler(roomSvc)
 
 	// Роутер
 	r := mux.NewRouter()
@@ -115,6 +121,20 @@ func main() {
 	api.HandleFunc("/anomalies", anomalyHandler.ListAnomalies).Methods("GET")
 	api.HandleFunc("/anomalies", anomalyHandler.CreateAnomaly).Methods("POST")
 	api.HandleFunc("/anomalies/{id}", anomalyHandler.UpdateAnomalyStatus).Methods("PATCH")
+
+	// Homes
+	api.HandleFunc("/homes", homeHandler.List).Methods("GET")
+	api.HandleFunc("/homes", homeHandler.Create).Methods("POST")
+	api.HandleFunc("/homes/{id}", homeHandler.GetByID).Methods("GET")
+	api.HandleFunc("/homes/{id}", homeHandler.Update).Methods("PUT")
+	api.HandleFunc("/homes/{id}", homeHandler.Delete).Methods("DELETE")
+
+	// Rooms
+	api.HandleFunc("/homes/{homeId}/rooms", roomHandler.ListByHome).Methods("GET")
+	api.HandleFunc("/homes/{homeId}/rooms", roomHandler.Create).Methods("POST")
+	api.HandleFunc("/rooms/{id}", roomHandler.GetByID).Methods("GET")
+	api.HandleFunc("/rooms/{id}", roomHandler.Update).Methods("PUT")
+	api.HandleFunc("/rooms/{id}", roomHandler.Delete).Methods("DELETE")
 
 	// Старт сервера
 	log.Println("API Gateway запущен на :8080")
