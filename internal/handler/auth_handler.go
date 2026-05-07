@@ -5,23 +5,51 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/VLGFoxRU/smartic-home/internal/service"
+	"github.com/VLGFoxRU/smartic-home/internal/domain"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type AuthHandler struct {
+	svc    *service.UserService
 	secret []byte
 }
 
-func NewAuthHandler(secret []byte) *AuthHandler {
-	return &AuthHandler{secret: secret}
+func NewAuthHandler(svc *service.UserService, secret []byte) *AuthHandler {
+	return &AuthHandler{svc: svc, secret: secret}
 }
 
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		return
+	}
+	if req.Username == "" || req.Email == "" || req.Password == "" {
+		http.Error(w, `{"error":"username, email, password required"}`, http.StatusBadRequest)
 		return
 	}
 
+	// По умолчанию регистрируем владельца (owner)
+	user, err := h.svc.Register(r.Context(), req.Username, req.Email, req.Password, domain.RoleOwner)
+	if err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusConflict)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{
+		"id":       user.ID(),
+		"username": user.Username(),
+	})
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var creds struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -31,22 +59,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Заглушка: принимаем любые логины/пароли и выдаём токен с фиксированными данными
-	claims := jwt.MapClaims{
-		"user_id": "a0000000-0000-0000-0000-000000000001", // тестовый пользователь
-		"role":    "owner",
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(h.secret)
+	user, err := h.svc.Authenticate(r.Context(), creds.Username, creds.Password)
 	if err != nil {
-		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusUnauthorized)
 		return
 	}
 
+	claims := jwt.MapClaims{
+		"user_id": user.ID(),
+		"role":    string(user.Role()),
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString(h.secret)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"token": tokenString,
-	})
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }

@@ -47,6 +47,8 @@ func main() {
 	anomalyRepo := infrastructure.NewPostgresAnomalyRepository(pool)
 	homeRepo := infrastructure.NewPostgresHomeRepository(pool)
 	roomRepo := infrastructure.NewPostgresRoomRepository(pool)
+	userRepo := infrastructure.NewPostgresUserRepository(pool)
+	homeMemberRepo := infrastructure.NewPostgresHomeMemberRepository(pool)
 
 	// Инфраструктурные адаптеры
 	stubBroker := infrastructure.NewStubBroker() // замена на RabbitMQ позже
@@ -63,6 +65,8 @@ func main() {
     anomalySvc := service.NewAnomalyService(anomalyRepo, wsEventPub) // получает publisher
 	homeSvc := service.NewHomeService(homeRepo)
 	roomSvc := service.NewRoomService(roomRepo)
+	userSvc := service.NewUserService(userRepo)
+	homeMemberSvc := service.NewHomeMemberService(homeMemberRepo, homeRepo, userRepo)
 
 	// Движки и детекторы
 	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc, cacheRepo, wsEventPub)
@@ -72,15 +76,16 @@ func main() {
 	telemetrySvc := service.NewTelemetryService(telemetryRepo, wsEventPub, anomalyDetector, sceneEngine)
 
 	// Обработчики
-	authSecret := []byte(getEnv("JWT_SECRET", "super-secret-key"))
-	authHandler := handler.NewAuthHandler(authSecret)
+	jwtSecret  := []byte(getEnv("JWT_SECRET", "super-secret-key"))
+	authHandler := handler.NewAuthHandler(userSvc, jwtSecret)
 	deviceHandler := handler.NewDeviceHandler(deviceSvc, controlSvc)
 	telemetryHandler := handler.NewTelemetryHandler(telemetrySvc)
 	sceneHandler := handler.NewSceneHandler(sceneSvc)
 	anomalyHandler := handler.NewAnomalyHandler(anomalySvc)
-	wsHandler := handler.NewWSHandler(hub, authSecret)
+	wsHandler := handler.NewWSHandler(hub, jwtSecret )
 	homeHandler := handler.NewHomeHandler(homeSvc)
 	roomHandler := handler.NewRoomHandler(roomSvc)
+	homeMemberHandler := handler.NewHomeMemberHandler(homeMemberSvc)
 
 	// Роутер
 	r := mux.NewRouter()
@@ -88,12 +93,13 @@ func main() {
 	r.Use(middleware.LoggingMiddleware)
 
 	// Публичные
-	r.HandleFunc("/api/v1/login", authHandler.Login).Methods("POST")
+	r.HandleFunc("/api/v1/auth/register", authHandler.Register).Methods("POST")
+	r.HandleFunc("/api/v1/auth/login", authHandler.Login).Methods("POST")
 	r.HandleFunc("/ws", wsHandler.ServeWS)
 
 	// Защищённые (JWT)
 	api := r.PathPrefix("/api/v1").Subrouter()
-	api.Use(middleware.AuthMiddleware(authSecret))
+	api.Use(middleware.AuthMiddleware(jwtSecret ))
 
 	// Devices
 	api.HandleFunc("/devices", deviceHandler.ListDevices).Methods("GET")
@@ -135,6 +141,12 @@ func main() {
 	api.HandleFunc("/rooms/{id}", roomHandler.GetByID).Methods("GET")
 	api.HandleFunc("/rooms/{id}", roomHandler.Update).Methods("PUT")
 	api.HandleFunc("/rooms/{id}", roomHandler.Delete).Methods("DELETE")
+
+	// Home members
+	api.HandleFunc("/homes/{homeId}/members", homeMemberHandler.ListMembers).Methods("GET")
+	api.HandleFunc("/homes/{homeId}/members", homeMemberHandler.AddMember).Methods("POST")
+	api.HandleFunc("/homes/{homeId}/members/{userId}", homeMemberHandler.ChangeRole).Methods("PUT")
+	api.HandleFunc("/homes/{homeId}/members/{userId}", homeMemberHandler.RemoveMember).Methods("DELETE")
 
 	// Старт сервера
 	log.Println("API Gateway запущен на :8080")

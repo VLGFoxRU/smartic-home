@@ -94,24 +94,6 @@ CREATE TABLE anomalies (
 CREATE INDEX idx_anomalies_status ON anomalies(status);
 CREATE INDEX idx_anomalies_device_id ON anomalies(device_id);
 
--- Добавим пару тестовых устройств для проверки
-
 INSERT INTO users (id, username, email, password_hash, role) VALUES
-('a0000000-0000-0000-0000-000000000001', 'testuser', 'test@example.com', 'hashed_password', 'owner');
-
-INSERT INTO users (id, username, email, password_hash, role) VALUES
-('00000000-0000-0000-0000-000000000000', 'system', 'system@internal', 'nologin', 'admin');
-
-INSERT INTO homes (id, name, owner_id) VALUES
-('b0000000-0000-0000-0000-000000000001', 'Мой дом', 'a0000000-0000-0000-0000-000000000001');
-
-INSERT INTO rooms (id, home_id, name) VALUES
-('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Гостиная');
-
-INSERT INTO devices (id, room_id, type, name, status) VALUES
-('d0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', 'light', 'Лампа потолочная', 'online'),
-('d0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001', 'temperature_sensor', 'Датчик температуры', 'online');
-
-INSERT INTO device_states (device_id, state) VALUES
-('d0000000-0000-0000-0000-000000000001', '{"power": "on", "brightness": 80}'),
-('d0000000-0000-0000-0000-000000000002', '{"temperature": 22.5}');
+('c0000000-0000-0000-0000-000000000001', 'system', 'system@internal', 'nologin', 'admin')
+ON CONFLICT (id) DO NOTHING;
