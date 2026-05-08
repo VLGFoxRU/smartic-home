@@ -24,6 +24,13 @@ CREATE TABLE rooms (
     name VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE home_members (
+    home_id UUID NOT NULL REFERENCES homes(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'controller', 'viewer')),
+    PRIMARY KEY (home_id, user_id)
+);
+
 CREATE TABLE devices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     room_id UUID REFERENCES rooms(id),
@@ -93,6 +100,18 @@ CREATE TABLE anomalies (
 
 CREATE INDEX idx_anomalies_status ON anomalies(status);
 CREATE INDEX idx_anomalies_device_id ON anomalies(device_id);
+
+CREATE TABLE alert_thresholds (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    device_id UUID NOT NULL REFERENCES devices(id),
+    telemetry_type VARCHAR(50) NOT NULL CHECK (telemetry_type IN ('temperature', 'humidity', 'power', 'energy', 'water_flow')),
+    min_value DOUBLE PRECISION,
+    max_value DOUBLE PRECISION,
+    severity VARCHAR(20) NOT NULL CHECK (severity IN ('warning', 'critical')),
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(device_id, telemetry_type)
+);
 
 INSERT INTO users (id, username, email, password_hash, role) VALUES
 ('c0000000-0000-0000-0000-000000000001', 'system', 'system@internal', 'nologin', 'admin')

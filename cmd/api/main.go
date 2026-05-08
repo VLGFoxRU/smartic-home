@@ -49,6 +49,7 @@ func main() {
 	roomRepo := infrastructure.NewPostgresRoomRepository(pool)
 	userRepo := infrastructure.NewPostgresUserRepository(pool)
 	homeMemberRepo := infrastructure.NewPostgresHomeMemberRepository(pool)
+	thresholdRepo := infrastructure.NewPostgresAlertThresholdRepository(pool)
 
 	// Инфраструктурные адаптеры
 	stubBroker := infrastructure.NewStubBroker() // замена на RabbitMQ позже
@@ -67,10 +68,11 @@ func main() {
 	roomSvc := service.NewRoomService(roomRepo)
 	userSvc := service.NewUserService(userRepo)
 	homeMemberSvc := service.NewHomeMemberService(homeMemberRepo, homeRepo, userRepo)
+	thresholdSvc := service.NewAlertThresholdService(thresholdRepo)
 
 	// Движки и детекторы
 	sceneEngine := engine.NewSceneEngine(sceneSvc, controlSvc, cacheRepo, wsEventPub)
-	anomalyDetector := detector.NewAnomalyDetector(telemetryRepo, anomalySvc)
+	anomalyDetector := detector.NewAnomalyDetector(telemetryRepo, anomalySvc, thresholdSvc)
 
 	// TelemetryService (с процессорами)
 	telemetrySvc := service.NewTelemetryService(telemetryRepo, wsEventPub, anomalyDetector, sceneEngine)
@@ -86,6 +88,7 @@ func main() {
 	homeHandler := handler.NewHomeHandler(homeSvc)
 	roomHandler := handler.NewRoomHandler(roomSvc)
 	homeMemberHandler := handler.NewHomeMemberHandler(homeMemberSvc)
+	thresholdHandler := handler.NewAlertThresholdHandler(thresholdSvc)
 
 	// Роутер
 	r := mux.NewRouter()
@@ -142,11 +145,16 @@ func main() {
 	api.HandleFunc("/rooms/{id}", roomHandler.Update).Methods("PUT")
 	api.HandleFunc("/rooms/{id}", roomHandler.Delete).Methods("DELETE")
 
-	// Home members
+	// Members
 	api.HandleFunc("/homes/{homeId}/members", homeMemberHandler.ListMembers).Methods("GET")
 	api.HandleFunc("/homes/{homeId}/members", homeMemberHandler.AddMember).Methods("POST")
 	api.HandleFunc("/homes/{homeId}/members/{userId}", homeMemberHandler.ChangeRole).Methods("PUT")
 	api.HandleFunc("/homes/{homeId}/members/{userId}", homeMemberHandler.RemoveMember).Methods("DELETE")
+
+	// Thresholds
+	api.HandleFunc("/thresholds", thresholdHandler.ListByDevice).Methods("GET")
+	api.HandleFunc("/thresholds", thresholdHandler.Create).Methods("POST")
+	api.HandleFunc("/thresholds/{id}", thresholdHandler.Delete).Methods("DELETE")
 
 	// Старт сервера
 	log.Println("API Gateway запущен на :8080")
