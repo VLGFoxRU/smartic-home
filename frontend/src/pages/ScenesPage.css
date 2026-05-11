@@ -1,0 +1,60 @@
+.scenes-page {
+  padding: 2rem;
+  color: var(--color-text);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1.5rem 0;
+}
+
+.scenes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.scene-card {
+  background-color: var(--color-bg-secondary);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.scene-info h3 {
+  font-family: var(--font-heading);
+  color: var(--color-accent);
+  margin-bottom: 0.25rem;
+}
+
+.scene-status {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.scene-status.active {
+  color: var(--color-success);
+}
+
+.scene-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.scene-actions button {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.scene-actions button:hover {
+  color: var(--color-accent);
+}

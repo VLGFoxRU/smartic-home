@@ -1,0 +1,194 @@
+.device-page {
+  padding: 2rem;
+  color: var(--color-text);
+}
+
+.back-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-family: var(--font-heading);
+}
+
+.device-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  background-color: var(--color-bg-secondary);
+}
+
+.latest-telemetry {
+  background-color: var(--color-bg-secondary);
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.latest-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.latest-value {
+  font-size: 3rem;
+  font-family: var(--font-heading);
+  color: var(--color-accent);
+}
+
+.latest-type {
+  display: block;
+  color: var(--color-text-muted);
+}
+
+.device-control {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.power-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.power-btn.on {
+  color: var(--color-accent);
+}
+
+.power-btn:hover {
+  color: var(--color-accent-light);
+}
+
+.period-selector {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.period-btn {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-accent-light);
+  color: var(--color-text);
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-btn.active {
+  background-color: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.period-btn:hover:not(.active) {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--color-accent-light);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.chart-container {
+  height: 300px;
+  background-color: var(--color-bg-secondary);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.device-anomalies {
+  margin-top: 2rem;
+}
+
+.anomalies-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.anomaly-mini-card {
+  background-color: var(--color-bg-secondary);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 3px solid transparent;
+}
+
+.anomaly-mini-card.warning { border-left-color: #FFA500; }
+.anomaly-mini-card.critical { border-left-color: #FF4444; }
+
+.anomaly-mini-info {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.anomaly-mini-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.anomaly-mini-actions button {
+  background: none;
+  border: 1px solid var(--color-text-muted);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+}
+
+.no-anomalies {
+  color: var(--color-text-muted);
+}
+
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}

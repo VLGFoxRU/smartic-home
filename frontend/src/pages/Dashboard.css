@@ -1,0 +1,67 @@
+.dashboard-error {
+  text-align: center;
+  color: #ff6b6b;
+  padding: 2rem;
+}
+
+.dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+  color: var(--color-text-muted);
+}
+
+.homes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.home-card {
+  margin-left: 1.5rem;
+  background-color: var(--color-bg-secondary);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s;
+}
+
+.home-card:hover {
+  transform: translateY(-4px);
+}
+
+.home-name {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  color: var(--color-accent);
+}
+
+.home-id {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.create-home-btn {
+  margin: 1.5rem 1.5rem 0rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--color-accent);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  font-family: var(--font-heading);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.create-home-btn:hover {
+  background-color: #d97726;
+}
+
+.home-card { cursor: pointer; }
